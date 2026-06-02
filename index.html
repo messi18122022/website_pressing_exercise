@@ -107,6 +107,11 @@
       text-align: center;
       max-width: 280px;
     }
+
+    #status a {
+      color: #4ade80;
+      text-decoration: underline;
+    }
   </style>
 </head>
 <body>
@@ -153,6 +158,11 @@
 
     const canVibrate = 'vibrate' in navigator;
 
+    function openInChrome() {
+      const url = location.href;
+      location.href = 'intent://' + url.replace(/^https?:\/\//, '') + '#Intent;scheme=https;package=com.android.chrome;end';
+    }
+
     function vibrate(duration) {
       if (canVibrate) {
         navigator.vibrate(duration);
@@ -195,7 +205,8 @@
 
       if (!running) {
         if (!canVibrate) {
-          statusEl.textContent = '⚠ Vibration nicht unterstützt (iOS?)';
+          statusEl.innerHTML = '⚠ Vibration nicht verfügbar &mdash; bitte <a id="chrome-link" href="#" onclick="openInChrome()">in Chrome öffnen</a>';
+          return;
         } else {
           vibrate(200);
           statusEl.textContent = '';
