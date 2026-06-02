@@ -5,7 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Press Timer</title>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
 
     body {
       background: #111;
@@ -35,6 +39,7 @@
       letter-spacing: -0.02em;
       line-height: 1;
     }
+
     #timer.finished { color: #4ade80; }
 
     #progress-ring {
@@ -45,12 +50,19 @@
       align-items: center;
       justify-content: center;
     }
+
     #progress-ring svg {
       position: absolute;
       top: 0; left: 0;
       transform: rotate(-90deg);
     }
-    circle.track { fill: none; stroke: #222; stroke-width: 8; }
+
+    circle.track {
+      fill: none;
+      stroke: #222;
+      stroke-width: 8;
+    }
+
     circle.progress {
       fill: none;
       stroke: #fff;
@@ -58,25 +70,10 @@
       stroke-linecap: round;
       transition: stroke-dashoffset 1s linear, stroke 0.3s;
     }
+
     circle.progress.finished { stroke: #4ade80; }
 
-    /* Mic indicator */
-    #mic-ring {
-      position: absolute;
-      top: 0; left: 0;
-      width: 240px;
-      height: 240px;
-      border-radius: 50%;
-      border: 3px solid transparent;
-      transition: border-color 0.1s, box-shadow 0.1s;
-      pointer-events: none;
-    }
-    #mic-ring.active {
-      border-color: #4ade80;
-      box-shadow: 0 0 18px #4ade8088;
-    }
-
-    /* Points */
+    /* Points row */
     #points-row {
       display: flex;
       align-items: center;
@@ -84,11 +81,11 @@
     }
 
     .pt-btn {
-      width: 64px;
-      height: 64px;
+      width: 72px;
+      height: 72px;
       border-radius: 50%;
       border: none;
-      font-size: 2rem;
+      font-size: 2.2rem;
       font-weight: 700;
       cursor: pointer;
       display: flex;
@@ -98,9 +95,18 @@
       user-select: none;
       -webkit-user-select: none;
     }
+
     .pt-btn:active { transform: scale(0.88); }
-    #btn-minus { background: #2a1a1a; color: #f87171; }
-    #btn-plus  { background: #1a2a1a; color: #4ade80; }
+
+    #btn-minus {
+      background: #2a1a1a;
+      color: #f87171;
+    }
+
+    #btn-plus {
+      background: #1a2a1a;
+      color: #4ade80;
+    }
 
     #points-wrap {
       display: flex;
@@ -109,12 +115,14 @@
       gap: 2px;
       min-width: 80px;
     }
+
     #points-label {
       font-size: 0.75rem;
       letter-spacing: 0.15em;
       text-transform: uppercase;
       color: #555;
     }
+
     #points {
       font-size: 3.5rem;
       font-weight: 700;
@@ -122,6 +130,7 @@
       line-height: 1;
       transition: color 0.15s;
     }
+
     #delta {
       font-size: 1.2rem;
       font-weight: 600;
@@ -129,6 +138,7 @@
       opacity: 0;
       transition: opacity 0.1s;
     }
+
     #delta.show { opacity: 1; }
     #delta.plus, #points.plus { color: #4ade80; }
     #delta.minus, #points.minus { color: #f87171; }
@@ -145,17 +155,19 @@
       letter-spacing: 0.05em;
       transition: background 0.2s, transform 0.1s;
     }
+
     #btn:active { transform: scale(0.96); }
     #btn.running { background: #333; color: #fff; }
 
     #status {
       font-size: 0.85rem;
       color: #555;
-      letter-spacing: 0.08em;
+      letter-spacing: 0.1em;
       min-height: 1.2em;
       text-align: center;
-      max-width: 300px;
+      max-width: 280px;
     }
+
     #status a { color: #4ade80; text-decoration: underline; }
   </style>
 </head>
@@ -164,22 +176,21 @@
   <h1>Press Timer</h1>
 
   <div id="progress-ring">
-    <div id="mic-ring"></div>
     <svg width="240" height="240" viewBox="0 0 240 240">
-      <circle class="track"    cx="120" cy="120" r="108"/>
-      <circle class="progress" cx="120" cy="120" r="108" id="ring"/>
+      <circle class="track" cx="120" cy="120" r="108"/>
+      <circle class="progress" id="ring" cx="120" cy="120" r="108"/>
     </svg>
     <div id="timer">5:00</div>
   </div>
 
   <div id="points-row">
-    <button class="pt-btn" id="btn-minus" ontouchstart="bumpPoint(-1)" onclick="bumpPoint(-1)">−</button>
+    <button class="pt-btn" id="btn-minus" ontouchstart="addPoint(-1)" onclick="addPoint(-1)">−</button>
     <div id="points-wrap">
       <div id="points-label">Punkte</div>
       <div id="points">0</div>
       <div id="delta"></div>
     </div>
-    <button class="pt-btn" id="btn-plus" ontouchstart="bumpPoint(1)" onclick="bumpPoint(1)">+</button>
+    <button class="pt-btn" id="btn-plus" ontouchstart="addPoint(1)" onclick="addPoint(1)">+</button>
   </div>
 
   <button id="btn" onclick="toggle()">Start</button>
@@ -187,107 +198,110 @@
 
   <script>
     const TOTAL = 5 * 60;
-    const CIRC  = 2 * Math.PI * 108;
+    const CIRCUMFERENCE = 2 * Math.PI * 108;
 
-    let remaining    = TOTAL;
-    let clockInterval = null;
-    let running      = false;
-    let points       = 0;
+    let remaining = TOTAL;
+    let interval = null;
+    let running = false;
+    let points = 0;
     let deltaTimeout = null;
-    let lastTap      = 0;
+    let lastTap = 0;
 
     const timerEl  = document.getElementById('timer');
     const btnEl    = document.getElementById('btn');
     const ringEl   = document.getElementById('ring');
-    const micRing  = document.getElementById('mic-ring');
     const statusEl = document.getElementById('status');
     const pointsEl = document.getElementById('points');
     const deltaEl  = document.getElementById('delta');
 
-    ringEl.style.strokeDasharray  = CIRC;
+    ringEl.style.strokeDasharray = CIRCUMFERENCE;
     ringEl.style.strokeDashoffset = 0;
 
-    const canVibrate = 'vibrate' in navigator;
-    function vibrate(p) { if (canVibrate) navigator.vibrate(p); }
-
     function format(s) {
-      return `${Math.floor(s/60)}:${(s%60).toString().padStart(2,'0')}`;
+      const m = Math.floor(s / 60);
+      const sec = s % 60;
+      return `${m}:${sec.toString().padStart(2, '0')}`;
     }
+
     function updateRing() {
-      ringEl.style.strokeDashoffset = CIRC * (1 - remaining / TOTAL);
+      const offset = CIRCUMFERENCE * (1 - remaining / TOTAL);
+      ringEl.style.strokeDashoffset = offset;
     }
 
-    // ── Point counter ──────────────────────────────────────────────
-    function bumpPoint(delta) {
-      const now = Date.now();
-      if (now - lastTap < 300) return;
-      lastTap = now;
-      addPoint(delta);
+    const canVibrate = 'vibrate' in navigator;
+    let mediaAudio = null;
+
+    function openInChrome() {
+      location.href = 'intent://' + location.href.replace(/^https?:\/\//, '') + '#Intent;scheme=https;package=com.android.chrome;end';
     }
 
-    function addPoint(delta) {
-      points += delta;
-      pointsEl.textContent = points;
-      const cls = delta > 0 ? 'plus' : 'minus';
-      pointsEl.className = cls;
-      deltaEl.textContent  = delta > 0 ? '+1' : '−1';
-      deltaEl.className    = 'show ' + cls;
-      clearTimeout(deltaTimeout);
-      deltaTimeout = setTimeout(() => {
-        pointsEl.className = '';
-        deltaEl.className  = '';
-      }, 500);
+    function vibrate(pattern) {
+      if (canVibrate) navigator.vibrate(pattern);
     }
 
-    // ── Clap detection ─────────────────────────────────────────────
-    let analyser   = null;
-    let micLoop    = null;
-    let lastClap   = 0;
-    const THRESHOLD = 40; // 0–128, tune if needed
+    // A real <audio> element must be playing for Chrome to route
+    // volume key events to the page instead of the system.
+    function initAudio() {
+      if (mediaAudio) return;
 
-    async function startMic() {
-      if (analyser) return;
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-        const ctx    = new AudioContext();
-        const src    = ctx.createMediaStreamSource(stream);
-        analyser     = ctx.createAnalyser();
-        analyser.fftSize = 512;
-        src.connect(analyser);
-        listenForClap();
-        statusEl.textContent = '🎤 Klatschen = +1 Punkt';
-        setTimeout(() => { if (statusEl.textContent.includes('Klatschen')) statusEl.textContent = ''; }, 2500);
-      } catch (e) {
-        statusEl.textContent = 'Kein Mikrofonzugriff — Buttons nutzen';
+      // Build a minimal 1-second silent WAV in memory
+      const sr = 8000, n = sr;
+      const buf = new ArrayBuffer(44 + n * 2);
+      const dv = new DataView(buf);
+      const wr = (o, s) => [...s].forEach((c, i) => dv.setUint8(o + i, c.charCodeAt(0)));
+      wr(0, 'RIFF'); dv.setUint32(4, 36 + n * 2, true);
+      wr(8, 'WAVE'); wr(12, 'fmt ');
+      dv.setUint32(16, 16, true); dv.setUint16(20, 1, true);
+      dv.setUint16(22, 1, true);  dv.setUint32(24, sr, true);
+      dv.setUint32(28, sr * 2, true); dv.setUint16(32, 2, true);
+      dv.setUint16(34, 16, true); wr(36, 'data');
+      dv.setUint32(40, n * 2, true);
+      // samples stay 0 = silence
+
+      const url = URL.createObjectURL(new Blob([buf], { type: 'audio/wav' }));
+      mediaAudio = new Audio(url);
+      mediaAudio.loop = true;
+      mediaAudio.volume = 0.001;
+      mediaAudio.play().catch(() => {});
+
+      if ('mediaSession' in navigator) {
+        navigator.mediaSession.metadata = new MediaMetadata({ title: 'Press Timer' });
+        navigator.mediaSession.setActionHandler('play', () => {});
+        navigator.mediaSession.setActionHandler('pause', () => {});
       }
     }
 
-    function listenForClap() {
-      const buf = new Uint8Array(analyser.fftSize);
-      micLoop = setInterval(() => {
-        analyser.getByteTimeDomainData(buf);
-        let peak = 0;
-        for (const v of buf) {
-          const amp = Math.abs(v - 128);
-          if (amp > peak) peak = amp;
-        }
-        if (peak > THRESHOLD) {
-          const now = Date.now();
-          if (now - lastClap > 400) {
-            lastClap = now;
-            addPoint(1);
-            micRing.classList.add('active');
-            setTimeout(() => micRing.classList.remove('active'), 150);
-          }
-        }
-      }, 30);
+    // Volume key listener — works in Chrome when audio is active
+    document.addEventListener('keydown', (e) => {
+      const up   = e.key === 'AudioVolumeUp'   || e.keyCode === 175;
+      const down = e.key === 'AudioVolumeDown' || e.keyCode === 174;
+      if (up || down) {
+        e.preventDefault();
+        addPoint(up ? 1 : -1);
+      }
+    });
+
+    function addPoint(delta) {
+      // Prevent double-fire from ontouchstart + onclick
+      const now = Date.now();
+      if (now - lastTap < 300) return;
+      lastTap = now;
+
+      points += delta;
+      pointsEl.textContent = points;
+
+      const cls = delta > 0 ? 'plus' : 'minus';
+      pointsEl.className = cls;
+      deltaEl.textContent = delta > 0 ? '+1' : '−1';
+      deltaEl.className = 'show ' + cls;
+
+      clearTimeout(deltaTimeout);
+      deltaTimeout = setTimeout(() => {
+        pointsEl.className = '';
+        deltaEl.className = '';
+      }, 500);
     }
 
-    function stopMic() {
-      if (micLoop) { clearInterval(micLoop); micLoop = null; }
-    }
-
-    // ── Timer ──────────────────────────────────────────────────────
     function tick() {
       remaining--;
       timerEl.textContent = format(remaining);
@@ -295,13 +309,15 @@
 
       if (remaining > 0 && remaining % 30 === 0) {
         vibrate([400, 100, 400]);
+        statusEl.textContent = 'Vibration';
+        setTimeout(() => { statusEl.textContent = ''; }, 1000);
       }
 
       if (remaining === 0) {
         vibrate([300, 100, 300, 100, 300, 150, 800]);
-        clearInterval(clockInterval); clockInterval = null;
+        clearInterval(interval);
         running = false;
-        stopMic();
+        interval = null;
         timerEl.classList.add('finished');
         ringEl.classList.add('finished');
         btnEl.textContent = 'Neu starten';
@@ -313,10 +329,10 @@
     function toggle() {
       if (remaining === 0) {
         remaining = TOTAL;
-        points    = 0;
+        points = 0;
         pointsEl.textContent = '0';
-        pointsEl.className   = '';
-        timerEl.textContent  = format(remaining);
+        pointsEl.className = '';
+        timerEl.textContent = format(remaining);
         timerEl.classList.remove('finished');
         ringEl.classList.remove('finished');
         updateRing();
@@ -324,18 +340,23 @@
       }
 
       if (!running) {
+        if (!canVibrate) {
+          statusEl.innerHTML = '⚠ Vibration nicht verfügbar &mdash; bitte <a href="#" onclick="openInChrome()">in Chrome öffnen</a>';
+          return;
+        }
+        initAudio();
+        vibrate([400, 100, 400]);
+        statusEl.textContent = '';
         running = true;
         btnEl.textContent = 'Stop';
         btnEl.classList.add('running');
-        clockInterval = setInterval(tick, 1000);
-        vibrate([400, 100, 400]);
-        startMic();
+        interval = setInterval(tick, 1000);
       } else {
         running = false;
-        clearInterval(clockInterval); clockInterval = null;
+        clearInterval(interval);
+        interval = null;
         btnEl.textContent = 'Weiter';
         btnEl.classList.remove('running');
-        stopMic();
       }
     }
   </script>
