@@ -20,11 +20,12 @@
       align-items: center;
       justify-content: center;
       min-height: 100vh;
-      gap: 36px;
+      gap: 32px;
+      padding: 24px;
     }
 
     h1 {
-      font-size: 1.2rem;
+      font-size: 1.1rem;
       font-weight: 400;
       letter-spacing: 0.15em;
       text-transform: uppercase;
@@ -39,14 +40,12 @@
       line-height: 1;
     }
 
-    #timer.finished {
-      color: #4ade80;
-    }
+    #timer.finished { color: #4ade80; }
 
     #progress-ring {
       position: relative;
-      width: 260px;
-      height: 260px;
+      width: 240px;
+      height: 240px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -54,8 +53,7 @@
 
     #progress-ring svg {
       position: absolute;
-      top: 0;
-      left: 0;
+      top: 0; left: 0;
       transform: rotate(-90deg);
     }
 
@@ -73,55 +71,77 @@
       transition: stroke-dashoffset 1s linear, stroke 0.3s;
     }
 
-    circle.progress.finished {
-      stroke: #4ade80;
+    circle.progress.finished { stroke: #4ade80; }
+
+    /* Points row */
+    #points-row {
+      display: flex;
+      align-items: center;
+      gap: 20px;
     }
 
-    /* Points */
+    .pt-btn {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      border: none;
+      font-size: 2.2rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.1s;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .pt-btn:active { transform: scale(0.88); }
+
+    #btn-minus {
+      background: #2a1a1a;
+      color: #f87171;
+    }
+
+    #btn-plus {
+      background: #1a2a1a;
+      color: #4ade80;
+    }
+
     #points-wrap {
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 6px;
+      gap: 2px;
+      min-width: 80px;
     }
 
     #points-label {
-      font-size: 0.8rem;
+      font-size: 0.75rem;
       letter-spacing: 0.15em;
       text-transform: uppercase;
       color: #555;
     }
 
     #points {
-      font-size: 4rem;
+      font-size: 3.5rem;
       font-weight: 700;
       font-variant-numeric: tabular-nums;
       line-height: 1;
-      transition: color 0.2s;
-    }
-
-    #points.plus {
-      color: #4ade80;
-    }
-
-    #points.minus {
-      color: #f87171;
+      transition: color 0.15s;
     }
 
     #delta {
-      font-size: 1.4rem;
+      font-size: 1.2rem;
       font-weight: 600;
-      min-height: 1.6rem;
+      min-height: 1.5rem;
       opacity: 0;
       transition: opacity 0.1s;
     }
 
-    #delta.show {
-      opacity: 1;
-    }
-
-    #delta.plus { color: #4ade80; }
-    #delta.minus { color: #f87171; }
+    #delta.show { opacity: 1; }
+    #delta.plus, #points.plus { color: #4ade80; }
+    #delta.minus, #points.minus { color: #f87171; }
 
     #btn {
       background: #fff;
@@ -136,14 +156,8 @@
       transition: background 0.2s, transform 0.1s;
     }
 
-    #btn:active {
-      transform: scale(0.96);
-    }
-
-    #btn.running {
-      background: #333;
-      color: #fff;
-    }
+    #btn:active { transform: scale(0.96); }
+    #btn.running { background: #333; color: #fff; }
 
     #status {
       font-size: 0.85rem;
@@ -154,10 +168,7 @@
       max-width: 280px;
     }
 
-    #status a {
-      color: #4ade80;
-      text-decoration: underline;
-    }
+    #status a { color: #4ade80; text-decoration: underline; }
   </style>
 </head>
 <body>
@@ -165,17 +176,21 @@
   <h1>Press Timer</h1>
 
   <div id="progress-ring">
-    <svg width="260" height="260" viewBox="0 0 260 260">
-      <circle class="track" cx="130" cy="130" r="118"/>
-      <circle class="progress" id="ring" cx="130" cy="130" r="118"/>
+    <svg width="240" height="240" viewBox="0 0 240 240">
+      <circle class="track" cx="120" cy="120" r="108"/>
+      <circle class="progress" id="ring" cx="120" cy="120" r="108"/>
     </svg>
     <div id="timer">5:00</div>
   </div>
 
-  <div id="points-wrap">
-    <div id="points-label">Punkte</div>
-    <div id="points">0</div>
-    <div id="delta"></div>
+  <div id="points-row">
+    <button class="pt-btn" id="btn-minus" ontouchstart="addPoint(-1)" onclick="addPoint(-1)">−</button>
+    <div id="points-wrap">
+      <div id="points-label">Punkte</div>
+      <div id="points">0</div>
+      <div id="delta"></div>
+    </div>
+    <button class="pt-btn" id="btn-plus" ontouchstart="addPoint(1)" onclick="addPoint(1)">+</button>
   </div>
 
   <button id="btn" onclick="toggle()">Start</button>
@@ -183,22 +198,21 @@
 
   <script>
     const TOTAL = 5 * 60;
-    const CIRCUMFERENCE = 2 * Math.PI * 118;
+    const CIRCUMFERENCE = 2 * Math.PI * 108;
 
     let remaining = TOTAL;
     let interval = null;
     let running = false;
     let points = 0;
     let deltaTimeout = null;
-    let audioCtx = null;
-    let silentNode = null;
+    let lastTap = 0;
 
-    const timerEl   = document.getElementById('timer');
-    const btnEl     = document.getElementById('btn');
-    const ringEl    = document.getElementById('ring');
-    const statusEl  = document.getElementById('status');
-    const pointsEl  = document.getElementById('points');
-    const deltaEl   = document.getElementById('delta');
+    const timerEl  = document.getElementById('timer');
+    const btnEl    = document.getElementById('btn');
+    const ringEl   = document.getElementById('ring');
+    const statusEl = document.getElementById('status');
+    const pointsEl = document.getElementById('points');
+    const deltaEl  = document.getElementById('delta');
 
     ringEl.style.strokeDasharray = CIRCUMFERENCE;
     ringEl.style.strokeDashoffset = 0;
@@ -217,54 +231,33 @@
     const canVibrate = 'vibrate' in navigator;
 
     function openInChrome() {
-      const url = location.href;
-      location.href = 'intent://' + url.replace(/^https?:\/\//, '') + '#Intent;scheme=https;package=com.android.chrome;end';
+      location.href = 'intent://' + location.href.replace(/^https?:\/\//, '') + '#Intent;scheme=https;package=com.android.chrome;end';
     }
 
     function vibrate(pattern) {
       if (canVibrate) navigator.vibrate(pattern);
     }
 
-    // Silent AudioContext so Chrome routes volume key events to the page
-    function initAudio() {
-      if (audioCtx) return;
-      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      gain.gain.value = 0;
-      osc.connect(gain);
-      gain.connect(audioCtx.destination);
-      osc.start();
-      silentNode = osc;
-    }
-
     function addPoint(delta) {
+      // Prevent double-fire from ontouchstart + onclick
+      const now = Date.now();
+      if (now - lastTap < 300) return;
+      lastTap = now;
+
       points += delta;
       pointsEl.textContent = points;
 
       const cls = delta > 0 ? 'plus' : 'minus';
-      const sign = delta > 0 ? '+1' : '−1';
-
       pointsEl.className = cls;
-      deltaEl.textContent = sign;
+      deltaEl.textContent = delta > 0 ? '+1' : '−1';
       deltaEl.className = 'show ' + cls;
 
       clearTimeout(deltaTimeout);
       deltaTimeout = setTimeout(() => {
         pointsEl.className = '';
         deltaEl.className = '';
-      }, 600);
+      }, 500);
     }
-
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'AudioVolumeUp' || e.keyCode === 175) {
-        e.preventDefault();
-        addPoint(1);
-      } else if (e.key === 'AudioVolumeDown' || e.keyCode === 174) {
-        e.preventDefault();
-        addPoint(-1);
-      }
-    });
 
     function tick() {
       remaining--;
@@ -308,7 +301,6 @@
           statusEl.innerHTML = '⚠ Vibration nicht verfügbar &mdash; bitte <a href="#" onclick="openInChrome()">in Chrome öffnen</a>';
           return;
         }
-        initAudio();
         vibrate([400, 100, 400]);
         statusEl.textContent = '';
         running = true;
