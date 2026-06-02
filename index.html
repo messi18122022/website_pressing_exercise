@@ -184,13 +184,13 @@
   </div>
 
   <div id="points-row">
-    <button class="pt-btn" id="btn-minus" ontouchstart="addPoint(-1)" onclick="addPoint(-1)">−</button>
+    <button class="pt-btn" id="btn-minus">−</button>
     <div id="points-wrap">
       <div id="points-label">Punkte</div>
       <div id="points">0</div>
       <div id="delta"></div>
     </div>
-    <button class="pt-btn" id="btn-plus" ontouchstart="addPoint(1)" onclick="addPoint(1)">+</button>
+    <button class="pt-btn" id="btn-plus">+</button>
   </div>
 
   <button id="btn" onclick="toggle()">Start</button>
@@ -205,7 +205,6 @@
     let running = false;
     let points = 0;
     let deltaTimeout = null;
-    let lastTap = 0;
 
     const timerEl  = document.getElementById('timer');
     const btnEl    = document.getElementById('btn');
@@ -282,11 +281,6 @@
     });
 
     function addPoint(delta) {
-      // Prevent double-fire from ontouchstart + onclick
-      const now = Date.now();
-      if (now - lastTap < 300) return;
-      lastTap = now;
-
       points += delta;
       pointsEl.textContent = points;
 
@@ -298,9 +292,27 @@
       clearTimeout(deltaTimeout);
       deltaTimeout = setTimeout(() => {
         pointsEl.className = '';
-        deltaEl.className = '';
+        deltaEl.className  = '';
       }, 500);
     }
+
+    // Use touchstart + preventDefault to block the follow-up click,
+    // so rapid taps all register without a long debounce.
+    function bindPointBtn(el, delta) {
+      let blocked = false;
+      el.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        addPoint(delta);
+      }, { passive: false });
+      // Fallback for mouse (desktop)
+      el.addEventListener('click', () => {
+        if (blocked) return;
+        addPoint(delta);
+      });
+    }
+
+    bindPointBtn(document.getElementById('btn-plus'),  1);
+    bindPointBtn(document.getElementById('btn-minus'), -1);
 
     function tick() {
       remaining--;
