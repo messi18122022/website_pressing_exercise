@@ -175,13 +175,13 @@
       updateRing();
 
       if (remaining > 0 && remaining % 30 === 0) {
-        vibrate(200);
+        vibrate([400, 100, 400]);
         statusEl.textContent = 'Vibration';
         setTimeout(() => { statusEl.textContent = ''; }, 1000);
       }
 
       if (remaining === 0) {
-        vibrate(1200);
+        vibrate([300, 100, 300, 100, 300, 150, 800]);
         clearInterval(interval);
         running = false;
         interval = null;
@@ -208,7 +208,7 @@
           statusEl.innerHTML = '⚠ Vibration nicht verfügbar &mdash; bitte <a id="chrome-link" href="#" onclick="openInChrome()">in Chrome öffnen</a>';
           return;
         } else {
-          vibrate(200);
+          vibrate([400, 100, 400]);
           statusEl.textContent = '';
         }
         running = true;
