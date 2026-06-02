@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Press Timer</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: #111;
+      color: #fff;
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      gap: 48px;
+    }
+
+    h1 {
+      font-size: 1.2rem;
+      font-weight: 400;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: #888;
+    }
+
+    #timer {
+      font-size: 6rem;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: -0.02em;
+      line-height: 1;
+    }
+
+    #timer.finished {
+      color: #4ade80;
+    }
+
+    #progress-ring {
+      position: relative;
+      width: 260px;
+      height: 260px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #progress-ring svg {
+      position: absolute;
+      top: 0;
+      left: 0;
+      transform: rotate(-90deg);
+    }
+
+    circle.track {
+      fill: none;
+      stroke: #222;
+      stroke-width: 8;
+    }
+
+    circle.progress {
+      fill: none;
+      stroke: #fff;
+      stroke-width: 8;
+      stroke-linecap: round;
+      transition: stroke-dashoffset 1s linear, stroke 0.3s;
+    }
+
+    circle.progress.finished {
+      stroke: #4ade80;
+    }
+
+    #btn {
+      background: #fff;
+      color: #111;
+      border: none;
+      border-radius: 50px;
+      padding: 16px 48px;
+      font-size: 1.1rem;
+      font-weight: 600;
+      cursor: pointer;
+      letter-spacing: 0.05em;
+      transition: background 0.2s, transform 0.1s;
+    }
+
+    #btn:active {
+      transform: scale(0.96);
+    }
+
+    #btn.running {
+      background: #333;
+      color: #fff;
+    }
+
+    #status {
+      font-size: 0.85rem;
+      color: #555;
+      letter-spacing: 0.1em;
+      min-height: 1.2em;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Press Timer</h1>
+
+  <div id="progress-ring">
+    <svg width="260" height="260" viewBox="0 0 260 260">
+      <circle class="track" cx="130" cy="130" r="118"/>
+      <circle class="progress" id="ring" cx="130" cy="130" r="118"/>
+    </svg>
+    <div id="timer">5:00</div>
+  </div>
+
+  <button id="btn" onclick="toggle()">Start</button>
+  <div id="status"></div>
+
+  <script>
+    const TOTAL = 5 * 60;
+    const CIRCUMFERENCE = 2 * Math.PI * 118;
+
+    let remaining = TOTAL;
+    let interval = null;
+    let running = false;
+
+    const timerEl = document.getElementById('timer');
+    const btnEl = document.getElementById('btn');
+    const ringEl = document.getElementById('ring');
+    const statusEl = document.getElementById('status');
+
+    ringEl.style.strokeDasharray = CIRCUMFERENCE;
+    ringEl.style.strokeDashoffset = 0;
+
+    function format(s) {
+      const m = Math.floor(s / 60);
+      const sec = s % 60;
+      return `${m}:${sec.toString().padStart(2, '0')}`;
+    }
+
+    function updateRing() {
+      const offset = CIRCUMFERENCE * (1 - remaining / TOTAL);
+      ringEl.style.strokeDashoffset = offset;
+    }
+
+    function vibrate(duration) {
+      if ('vibrate' in navigator) {
+        navigator.vibrate(duration);
+      }
+    }
+
+    function tick() {
+      remaining--;
+      timerEl.textContent = format(remaining);
+      updateRing();
+
+      if (remaining > 0 && remaining % 30 === 0) {
+        vibrate(200);
+        statusEl.textContent = 'Vibration';
+        setTimeout(() => { statusEl.textContent = ''; }, 1000);
+      }
+
+      if (remaining === 0) {
+        vibrate(1200);
+        clearInterval(interval);
+        running = false;
+        interval = null;
+        timerEl.classList.add('finished');
+        ringEl.classList.add('finished');
+        btnEl.textContent = 'Neu starten';
+        btnEl.classList.remove('running');
+        statusEl.textContent = 'Fertig!';
+      }
+    }
+
+    function toggle() {
+      if (remaining === 0) {
+        remaining = TOTAL;
+        timerEl.textContent = format(remaining);
+        timerEl.classList.remove('finished');
+        ringEl.classList.remove('finished');
+        updateRing();
+        statusEl.textContent = '';
+      }
+
+      if (!running) {
+        running = true;
+        btnEl.textContent = 'Stop';
+        btnEl.classList.add('running');
+        interval = setInterval(tick, 1000);
+      } else {
+        running = false;
+        clearInterval(interval);
+        interval = null;
+        btnEl.textContent = 'Weiter';
+        btnEl.classList.remove('running');
+      }
+    }
+  </script>
+
+</body>
+</html>
