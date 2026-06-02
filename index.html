@@ -229,6 +229,7 @@
     }
 
     const canVibrate = 'vibrate' in navigator;
+    let mediaAudio = null;
 
     function openInChrome() {
       location.href = 'intent://' + location.href.replace(/^https?:\/\//, '') + '#Intent;scheme=https;package=com.android.chrome;end';
@@ -237,6 +238,48 @@
     function vibrate(pattern) {
       if (canVibrate) navigator.vibrate(pattern);
     }
+
+    // A real <audio> element must be playing for Chrome to route
+    // volume key events to the page instead of the system.
+    function initAudio() {
+      if (mediaAudio) return;
+
+      // Build a minimal 1-second silent WAV in memory
+      const sr = 8000, n = sr;
+      const buf = new ArrayBuffer(44 + n * 2);
+      const dv = new DataView(buf);
+      const wr = (o, s) => [...s].forEach((c, i) => dv.setUint8(o + i, c.charCodeAt(0)));
+      wr(0, 'RIFF'); dv.setUint32(4, 36 + n * 2, true);
+      wr(8, 'WAVE'); wr(12, 'fmt ');
+      dv.setUint32(16, 16, true); dv.setUint16(20, 1, true);
+      dv.setUint16(22, 1, true);  dv.setUint32(24, sr, true);
+      dv.setUint32(28, sr * 2, true); dv.setUint16(32, 2, true);
+      dv.setUint16(34, 16, true); wr(36, 'data');
+      dv.setUint32(40, n * 2, true);
+      // samples stay 0 = silence
+
+      const url = URL.createObjectURL(new Blob([buf], { type: 'audio/wav' }));
+      mediaAudio = new Audio(url);
+      mediaAudio.loop = true;
+      mediaAudio.volume = 0.001;
+      mediaAudio.play().catch(() => {});
+
+      if ('mediaSession' in navigator) {
+        navigator.mediaSession.metadata = new MediaMetadata({ title: 'Press Timer' });
+        navigator.mediaSession.setActionHandler('play', () => {});
+        navigator.mediaSession.setActionHandler('pause', () => {});
+      }
+    }
+
+    // Volume key listener — works in Chrome when audio is active
+    document.addEventListener('keydown', (e) => {
+      const up   = e.key === 'AudioVolumeUp'   || e.keyCode === 175;
+      const down = e.key === 'AudioVolumeDown' || e.keyCode === 174;
+      if (up || down) {
+        e.preventDefault();
+        addPoint(up ? 1 : -1);
+      }
+    });
 
     function addPoint(delta) {
       // Prevent double-fire from ontouchstart + onclick
@@ -301,6 +344,7 @@
           statusEl.innerHTML = '⚠ Vibration nicht verfügbar &mdash; bitte <a href="#" onclick="openInChrome()">in Chrome öffnen</a>';
           return;
         }
+        initAudio();
         vibrate([400, 100, 400]);
         statusEl.textContent = '';
         running = true;
